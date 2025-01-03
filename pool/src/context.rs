@@ -1,19 +1,31 @@
 use std::convert::TryInto;
 
-use crate::next_account_infos;
+use anyhow::Ok;
+// use crate::next_account_infos;
+use arch_program::account::AccountInfo;
+use arch_program::instruction::Instruction;
+use arch_program::{msg, next_account_info, program};
+use arch_program::program_error::ProgramError;
+use arch_program::pubkey::Pubkey;
 use serum_pool_schema::{
     Address, Basket, PoolRequestInner, PoolState, FEE_RATE_DENOMINATOR, MIN_FEE_RATE,
 };
-use solana_program;
-use solana_program::account_info::next_account_info;
-use solana_program::instruction::{AccountMeta, Instruction};
-use solana_program::program;
 use solana_program::program_option::COption;
 use solana_program::program_pack::Pack;
+// use solana_program;
+// use solana_program::account_info::next_account_info;
+// use solana_program::instruction::{AccountMeta, Instruction};
+// use solana_program::program;
+// use solana_program::program_option::COption;
+// use solana_program::program_pack::Pack;
 use solana_program::sysvar::{rent, Sysvar};
-use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
-use spl_token::state::{Account as TokenAccount, Mint};
+// use spl_token::state::{Account as TokenAccount};
+
+use crate::Account as TokenAccount;
+use crate::mint as Mint;
 use std::cmp::{max, min};
+
+use crate::next_account_infos;
 
 pub struct PoolContext<'a, 'b> {
     pub program_id: &'a Pubkey,
@@ -327,13 +339,14 @@ impl<'a, 'b> PoolContext<'a, 'b> {
         )
     }
 
-    pub fn check_rent_exemption(&self, account: &AccountInfo) -> Result<(), ProgramError> {
-        let rent = self.rent.ok_or_else(|| {
+    pub fn check_rent_exemption(&self, account: &AccountInfo) -> Result<()> {
+        let rent = self.rent.is_none(|| {
             msg!("Rent parameters not present");
             ProgramError::InvalidArgument
         })?;
-        let data_len = account.try_data_len()?;
-        let lamports = account.try_lamports()?;
+        let data_len = account.data_len();
+        let lamports = account.utxo;
+        
         if rent.is_exempt(lamports, data_len as usize) {
             Ok(())
         } else {
@@ -342,9 +355,25 @@ impl<'a, 'b> PoolContext<'a, 'b> {
         }
     }
 
+    // pub fn check_rent_exemption(&self, account: &AccountInfo) -> Result<(), ProgramError> {
+    //     let rent = self.rent.ok_or_else(|| {
+    //         msg!("Rent parameters not present");
+    //         ProgramError::InvalidArgument
+    //     })?;
+    //     let data_len = account.data_len();
+    //     let lamports = account.utxo;
+        
+    //     if rent.is_exempt(lamports, data_len as usize) {
+    //         Ok(())
+    //     } else {
+    //         msg!("Account is not rent exempt");
+    //         Err(ProgramError::InvalidArgument)
+    //     }
+    // }
+    
     /// Total number of pool tokens currently in existence.
     pub fn total_pool_tokens(&self) -> Result<u64, ProgramError> {
-        let mint = Mint::unpack(&self.pool_token_mint.try_borrow_data()?)?;
+        let mint = Mint::Mint::unpack(&self.pool_token_mint.try_borrow_data()?)?;
         Ok(mint.supply)
     }
 
@@ -647,10 +676,10 @@ impl<'a, 'b> PoolContext<'a, 'b> {
                 spl_token_program.clone(),
             ];
 
-            program::invoke_signed(
+            program::invoke(
                 &instruction,
                 account_infos,
-                &[&[self.pool_account.key.as_ref(), &[state.vault_signer_nonce]]],
+                // &[&[self.pool_account.key.as_ref(), &[state.vault_signer_nonce]]],
             )?;
         }
 

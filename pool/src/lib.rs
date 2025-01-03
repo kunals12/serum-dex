@@ -3,14 +3,15 @@ use std::ops::DerefMut;
 
 use arrayref::array_ref;
 use borsh::{BorshDeserialize, BorshSerialize};
-pub use solana_program;
-use solana_program::account_info::next_account_info;
 use solana_program::program_option::COption;
-use solana_program::program_pack::Pack;
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
-    pubkey::Pubkey,
-};
+// pub use solana_program;
+// use solana_program::account_info::next_account_info;
+// use solana_program::program_option::COption;
+// use solana_program::program_pack::Pack;
+// use solana_program::{
+//     account_info::AccountInfo, msg, program_error::ProgramError,
+//     pubkey::Pubkey,
+// };
 use spl_token::state::Account as TokenAccount;
 
 pub use serum_pool_schema as schema;
@@ -24,18 +25,28 @@ pub use crate::pool::Pool;
 
 pub mod context;
 pub mod pool;
+pub mod account;
+pub use account::*;
+pub mod mint;
+pub use mint::*;
+
+// Arch program-specific imports
+use arch_program::{
+    account::AccountInfo, entrypoint::{self, ProgramResult, MAX_PERMITTED_DATA_LENGTH}, msg, next_account_info, program_error::ProgramError, pubkey::Pubkey
+};
 
 type PoolResult<T> = Result<T, ProgramError>;
+
 
 #[macro_export]
 macro_rules! declare_pool_entrypoint {
     ($PoolImpl:ty) => {
-        solana_program::entrypoint!(entry);
+        entrypoint!(entry)
         fn entry(
-            program_id: &$crate::solana_program::pubkey::Pubkey,
-            accounts: &[$crate::solana_program::account_info::AccountInfo],
+            _program_id: &Pubkey,
+            accounts: &[AccountInfo],
             instruction_data: &[u8],
-        ) -> solana_program::entrypoint::ProgramResult {
+        ) -> Result<(), ProgramError> {
             $crate::pool_entrypoint::<$PoolImpl>(program_id, accounts, instruction_data)
         }
     };

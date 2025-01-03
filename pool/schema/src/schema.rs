@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::{io, io::Write};
 
+use arch_program::pubkey::Pubkey;
 use borsh::schema::{Declaration, Definition};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::pubkey::Pubkey;
+// use solana_program::pubkey::Pubkey;
 
 /// Wrapper around `solana_sdk::pubkey::Pubkey` so it can implement `BorshSerialize` etc.
 #[repr(transparent)]
@@ -216,15 +217,27 @@ pub struct Basket {
 
 impl BorshSerialize for Address {
     fn serialize<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        BorshSerialize::serialize(&self.0.to_bytes(), writer)
+        BorshSerialize::serialize(&self.0 .0, writer) // Access the `[u8; 32]` directly
     }
 }
 
+
 impl BorshDeserialize for Address {
+    // fn deserialize(buf: &mut &[u8]) -> io::Result<Self> {
+    //     Ok(Self(Pubkey::new_from_array(BorshDeserialize::deserialize(
+    //         buf,
+    //     )?)))
+    // }
+
     fn deserialize(buf: &mut &[u8]) -> io::Result<Self> {
-        Ok(Self(Pubkey::new_from_array(BorshDeserialize::deserialize(
-            buf,
-        )?)))
+        let pubkey_bytes: Vec<u8> = BorshDeserialize::deserialize(buf)?;
+        if pubkey_bytes.len() != 32 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid Pubkey length",
+            ));
+        }
+        Ok(Self(Pubkey::from_slice(&pubkey_bytes)))
     }
 }
 

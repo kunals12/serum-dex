@@ -21,6 +21,8 @@ serum-borsh = "0.8.1-serum.1"
 anyhow = { version = "1.0.33", default-features = false }
 hex = "0.4.2"
 base64 = "0.13.0"
+arch_program = { path = "../../../program" }
+bitcoin = { version = "0.31.0", features = ["serde"] }
 
 [lib]
 name = "serum_pool"
